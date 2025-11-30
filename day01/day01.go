@@ -1,6 +1,13 @@
 package day01
 
+/*
+#include <stdlib.h>
+#include "part2.h"
+*/
+import "C"
 import (
+	"unsafe"
+
 	"github.com/cheetahbyte/aoc25/registry"
 	"github.com/cheetahbyte/aoc25/util"
 )
@@ -15,7 +22,18 @@ func Part1() any {
 }
 
 func Part2() any {
-	return 0
+	data := parseData()
+	cStrArray := make([]*C.char, len(data))
+	for i, s := range data {
+		cStr := C.CString(s)
+		cStrArray[i] = cStr
+		defer C.free(unsafe.Pointer(cStr))
+	}
+
+	ptrToFirstElem := (**C.char)(unsafe.Pointer(&cStrArray[0]))
+	count := C.int(len(data))
+
+	return C.Part2_Bridge(ptrToFirstElem, count)
 }
 
 func init() {
