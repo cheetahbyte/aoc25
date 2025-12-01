@@ -11,10 +11,6 @@ const (
 	directionRight = 82
 )
 
-func mod(a, b int) int {
-	return ((a % b) + b) % b
-}
-
 type instruction struct {
 	right bool
 	steps int
