@@ -12,7 +12,9 @@ func ErrPanic(err error) {
 	}
 }
 
-func ReadFile(path string) []string {
+var data *[]string
+
+func ReadFile(path string) {
 	content, err := os.ReadFile(path)
 	ErrPanic(err)
 	scanner := bufio.NewScanner(bytes.NewReader(content))
@@ -21,5 +23,9 @@ func ReadFile(path string) []string {
 		line := scanner.Text()
 		lines = append(lines, line)
 	}
-	return lines
+	data = &lines
+}
+
+func GetData() *[]string {
+	return data
 }
