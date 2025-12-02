@@ -1,18 +1,27 @@
 #include <chrono>
-#include <fstream>
 #include <iostream>
 #include <string>
 
 constexpr int START_POSITION = 50;
 constexpr int DIAL_SIZE = 100;
 
-std::string readFile(const std::string& path) {
-    std::ifstream t(path, std::ios::in | std::ios::binary);
-    t.seekg(0, std::ios::end);
-    const std::streamoff size = t.tellg();
-    std::string buffer(static_cast<size_t>(size), '\0');
-    t.seekg(0);
-    t.read(buffer.data(), size);
+std::string readFileFast(const char* path) {
+    std::FILE* fp = std::fopen(path, "rb");
+    if (!fp) throw std::runtime_error("Could not open file");
+
+    std::fseek(fp, 0, SEEK_END);
+    long size = std::ftell(fp);
+    std::rewind(fp);
+
+    std::string buffer;
+    buffer.resize(size);
+    std::size_t result = std::fread(&buffer[0], 1, size, fp);
+
+    std::fclose(fp);
+
+    if (result != static_cast<size_t>(size)) {
+         throw std::runtime_error("Read error");
+    }
     return buffer;
 }
 
@@ -56,10 +65,8 @@ int pt1_from_buffer(const std::string& buffer) {
 }
 
 int main() {
-    auto rawBuffer = readFile("./day01/input.txt");
-
+    auto rawBuffer = readFileFast("../day01/input.txt");
     auto start = std::chrono::high_resolution_clock::now();
-
     int p1 = pt1_from_buffer(rawBuffer);
 
     auto end = std::chrono::high_resolution_clock::now();
