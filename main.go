@@ -7,6 +7,7 @@ import (
 
 	_ "github.com/cheetahbyte/aoc25/day01"
 	_ "github.com/cheetahbyte/aoc25/day02"
+	_ "github.com/cheetahbyte/aoc25/day03"
 	"github.com/cheetahbyte/aoc25/registry"
 )
 
