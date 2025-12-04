@@ -1,58 +1,65 @@
 package day04
 
 import (
-	"strings"
-
 	"github.com/cheetahbyte/aoc25/registry"
 	"github.com/cheetahbyte/aoc25/util"
 )
 
-var dirs = [][2]int{
-	{-1, -1}, {0, -1}, {1, -1},
-	{-1, 0}, {1, 0},
-	{-1, 1}, {0, 1}, {1, 1},
-}
+var neighborOffsets []int
 
-func parseGrid(data []string) ([][]string, int, int) {
-	grid := [][]string{}
-	for _, row := range data {
-		if row == "" {
-			continue
-		}
-		split := strings.Split(row, "")
-		grid = append(grid, split)
+func setupOffsets(width int) {
+	neighborOffsets = []int{
+		-width - 1, -width, -width + 1,
+		-1, 1,
+		width - 1, width, width + 1,
 	}
-	return grid, len(grid), len(grid[0])
 }
 
-func countNeighbors(grid [][]string, x, y, rows, cols int) int {
-	count := 0
-	for _, d := range dirs {
-		nx, ny := x+d[0], y+d[1]
-		if nx >= 0 && nx < cols && ny >= 0 && ny < rows {
-			if grid[ny][nx] == "@" {
-				count++
+func parseGrid(raw [][]string) ([]byte, int, int, []int) {
+	rows := len(raw)
+	cols := len(raw[0])
+	grid := make([]byte, rows*cols)
+	var active []int
+
+	for y := range rows {
+		for x := range cols {
+			if raw[y][x] == "@" {
+				idx := y*cols + x
+				grid[idx] = 1
+				active = append(active, idx)
 			}
 		}
 	}
-	return count
+	return grid, cols, rows, active
 }
 
 func Part1() any {
-	data := *util.GetData()
-	grid, rows, cols := parseGrid(data)
+	rawGrid := *util.GetGrid()
+	grid, width, height, activeIndices := parseGrid(rawGrid)
+	setupOffsets(width)
+
+	totalSize := width * height
 	accessibleCount := 0
-	for y := range rows {
-		for x := range cols {
-			if grid[y][x] != "@" {
-				continue
-			}
 
-			paperNeighbors := countNeighbors(grid, x, y, rows, cols)
+	for _, idx := range activeIndices {
+		neighbors := 0
+		for _, offset := range neighborOffsets {
+			nIdx := idx + offset
+			if nIdx >= 0 && nIdx < totalSize {
+				cx, cy := idx%width, idx/width
+				nx, ny := nIdx%width, nIdx/width
+				if (nx-cx) > 1 || (cx-nx) > 1 || (ny-cy) > 1 || (cy-ny) > 1 {
+					continue
+				}
 
-			if paperNeighbors < 4 {
-				accessibleCount++
+				if grid[nIdx] == 1 {
+					neighbors++
+				}
 			}
+		}
+
+		if neighbors < 4 {
+			accessibleCount++
 		}
 	}
 
@@ -60,30 +67,67 @@ func Part1() any {
 }
 
 func Part2() any {
-	data := *util.GetData()
-	grid, rows, cols := parseGrid(data)
+	raw := *util.GetGrid()
+	rows, cols := len(raw), len(raw[0])
+
+	// pad the grid, so every cell has 8 neighbors
+	w := cols + 1
+	grid := make([]byte, (rows+2)*w)
+
+	// q holds indicies to check
+	q := make([]int, 0, rows*cols)
+
+	for y := range rows {
+		// off by 1 row to center
+		offset := (y + 1) * w
+		for x := range cols {
+			if raw[y][x] == "@" {
+				idx := offset + x
+				grid[idx] = 3 // Binary 11: Alive(1) | Queued(2)
+				q = append(q, idx)
+			}
+		}
+	}
+
+	offs := []int{-w - 1, -w, -w + 1, -1, 1, w - 1, w, w + 1}
+
 	totalRemoved := 0
+	deaths := make([]int, 0, 64)
 
-	for {
-		toRemove := [][2]int{}
+	// simulation loops
+	for len(q) > 0 {
+		deaths = deaths[:0]
+		for _, idx := range q {
+			grid[idx] &= 1
+			n := 0
+			for _, d := range offs {
+				n += int(grid[idx+d] & 1)
+			}
 
-		for y := range rows {
-			for x := range cols {
-				if grid[y][x] == "@" {
-					if countNeighbors(grid, x, y, rows, cols) < 4 {
-						toRemove = append(toRemove, [2]int{x, y})
-					}
-				}
+			if n < 4 {
+				deaths = append(deaths, idx)
 			}
 		}
 
-		if len(toRemove) == 0 {
+		if len(deaths) == 0 {
 			break
 		}
-		// remove them
-		totalRemoved += len(toRemove)
-		for _, coord := range toRemove {
-			grid[coord[1]][coord[0]] = "."
+
+		q = q[:0]
+
+		for _, idx := range deaths {
+			if grid[idx]&1 == 1 {
+				grid[idx] = 0 // Kill cell
+				totalRemoved++
+
+				for _, d := range offs {
+					nIdx := idx + d
+					if grid[nIdx] == 1 {
+						grid[nIdx] = 3
+						q = append(q, nIdx)
+					}
+				}
+			}
 		}
 	}
 
@@ -91,7 +135,7 @@ func Part2() any {
 }
 
 func init() {
-	util.ReadFile("day04/input.txt")
+	util.ReadFileGrid("day04/input.txt")
 	registry.Register(4, 1, "D04P1", Part1)
 	registry.Register(4, 2, "D04P2", Part2)
 }
