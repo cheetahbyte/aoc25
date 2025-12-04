@@ -33,21 +33,17 @@ int part1(const vec2char& grid) {
             for (int i = 0; i<8; ++i) {
                 int nr = r + dr[i];
                 int nc = c + dc[i];
-
                 if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-                    if (grid[nr][nc] == '@')
-                        neighborCount++;
+                    if (grid[nr][nc] == '@') neighborCount++;
                 }
             }
-            if (neighborCount < 4) {
-                hits++;
-            }
+            if (neighborCount < 4) hits++;
         }
     }
     return hits;
 }
 
-int part2(vec2char grid) {
+int part2_original(vec2char grid) {
     int rows = grid.size();
     int cols = grid[0].size();
     int totalRemoved = 0;
@@ -55,13 +51,9 @@ int part2(vec2char grid) {
     int dc[] = {-1,  0,  1, -1,  1, -1,  0,  1};
 
     std::vector<std::pair<int, int>> candidates;
-
-    // Initial scan
     for(int r = 0; r < rows; ++r) {
         for(int c = 0; c < cols; ++c) {
-            if(grid[r][c] == '@') {
-                candidates.push_back({r, c});
-            }
+            if(grid[r][c] == '@') candidates.push_back({r, c});
         }
     }
 
@@ -72,12 +64,10 @@ int part2(vec2char grid) {
         std::vector<std::pair<int, int>> toRemove;
         std::vector<std::pair<int, int>> nextCandidates;
 
-        // Identify removals
         for (const auto& p : candidates) {
             int r = p.first;
             int c = p.second;
             int neighborCount = 0;
-
             for (int i = 0; i < 8; ++i) {
                 int nr = r + dr[i];
                 int nc = c + dc[i];
@@ -85,27 +75,20 @@ int part2(vec2char grid) {
                     if (grid[nr][nc] == '@') neighborCount++;
                 }
             }
-
-            if (neighborCount < 4) {
-                toRemove.push_back(p);
-            }
+            if (neighborCount < 4) toRemove.push_back(p);
         }
 
         if (toRemove.empty()) break;
-
         totalRemoved += toRemove.size();
         currentToken++;
 
-        // Apply removals and queue neighbors
         for (const auto& p : toRemove) {
             int r = p.first;
             int c = p.second;
             grid[r][c] = '.';
-
             for (int i = 0; i < 8; ++i) {
                 int nr = r + dr[i];
                 int nc = c + dc[i];
-
                 if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
                     if (grid[nr][nc] == '@' && checkTags[nr][nc] != currentToken) {
                         checkTags[nr][nc] = currentToken;
@@ -125,20 +108,17 @@ int main() {
     auto start1 = std::chrono::high_resolution_clock::now();
     auto p1 = part1(vec);
     auto end1 = std::chrono::high_resolution_clock::now();
-    auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-
-    std::cout << "Part 1: " << p1 << std::endl;
-    std::cout << "Time P1: " << duration1.count() << " us" << std::endl;
-
-    std::cout << "----------------" << std::endl;
 
     auto start2 = std::chrono::high_resolution_clock::now();
-    auto p2 = part2(vec);
+    auto p2 = part2_original(vec);
     auto end2 = std::chrono::high_resolution_clock::now();
-    auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
 
-    std::cout << "Part 2: " << p2 << std::endl;
-    std::cout << "Time P2: " << duration2.count() << " us" << std::endl;
+    auto dur1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
+    auto dur2_orig = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
+
+    std::cout << "Part 1: " << p1 << " (" << dur1.count() << " us)" << std::endl;
+    std::cout << "----------------" << std::endl;
+    std::cout << "Part 2 (Original) : " << p2 << " (" << dur2_orig.count() << " us)" << std::endl;
 
     return 0;
 }
