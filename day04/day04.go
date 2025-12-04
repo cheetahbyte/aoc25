@@ -5,56 +5,60 @@ import (
 	"github.com/cheetahbyte/aoc25/util"
 )
 
-var neighborOffsets []int
+const (
+	cellAlive  = 1
+	cellQueued = 2
+)
 
-func setupOffsets(width int) {
-	neighborOffsets = []int{
-		-width - 1, -width, -width + 1,
-		-1, 1,
-		width - 1, width, width + 1,
-	}
+var neighborDeltas = [8][2]int{
+	{-1, -1}, {0, -1}, {1, -1},
+	{-1, 0}, {1, 0},
+	{-1, 1}, {0, 1}, {1, 1},
 }
 
-func parseGrid(raw [][]string) ([]byte, int, int, []int) {
-	rows := len(raw)
-	cols := len(raw[0])
-	grid := make([]byte, rows*cols)
-	var active []int
+func parseGrid(raw [][]string) (grid []byte, width, height int, active []int) {
+	height = len(raw)
+	if height == 0 {
+		return nil, 0, 0, nil
+	}
 
-	for y := range rows {
-		for x := range cols {
-			if raw[y][x] == "@" {
-				idx := y*cols + x
-				grid[idx] = 1
+	width = len(raw[0])
+	grid = make([]byte, width*height)
+	active = make([]int, 0, width*height/4)
+
+	for y := 0; y < height; y++ {
+		row := raw[y]
+		for x := 0; x < width; x++ {
+			if row[x] == "@" {
+				idx := y*width + x
+				grid[idx] = cellAlive
 				active = append(active, idx)
 			}
 		}
 	}
-	return grid, cols, rows, active
+	return grid, width, height, active
 }
 
 func Part1() any {
 	rawGrid := *util.GetGrid()
-	grid, width, height, activeIndices := parseGrid(rawGrid)
-	setupOffsets(width)
+	grid, width, height, active := parseGrid(rawGrid)
 
-	totalSize := width * height
 	accessibleCount := 0
 
-	for _, idx := range activeIndices {
-		neighbors := 0
-		for _, offset := range neighborOffsets {
-			nIdx := idx + offset
-			if nIdx >= 0 && nIdx < totalSize {
-				cx, cy := idx%width, idx/width
-				nx, ny := nIdx%width, nIdx/width
-				if (nx-cx) > 1 || (cx-nx) > 1 || (ny-cy) > 1 || (cy-ny) > 1 {
-					continue
-				}
+	for _, idx := range active {
+		cx := idx % width
+		cy := idx / width
 
-				if grid[nIdx] == 1 {
-					neighbors++
-				}
+		neighbors := 0
+		for _, d := range neighborDeltas {
+			nx := cx + d[0]
+			ny := cy + d[1]
+			if nx < 0 || nx >= width || ny < 0 || ny >= height {
+				continue
+			}
+			nIdx := ny*width + nx
+			if grid[nIdx] == cellAlive {
+				neighbors++
 			}
 		}
 
@@ -66,42 +70,56 @@ func Part1() any {
 	return accessibleCount
 }
 
-func Part2() any {
-	raw := *util.GetGrid()
-	rows, cols := len(raw), len(raw[0])
+func buildPaddedGrid(width, height int, active []int) (grid []byte, stride int, queue []int) {
+	stride = width + 2
+	h := height + 2
 
-	// pad the grid, so every cell has 8 neighbors
-	w := cols + 1
-	grid := make([]byte, (rows+2)*w)
+	grid = make([]byte, stride*h)
+	queue = make([]int, 0, len(active))
 
-	// q holds indicies to check
-	q := make([]int, 0, rows*cols)
-
-	for y := range rows {
-		// off by 1 row to center
-		offset := (y + 1) * w
-		for x := range cols {
-			if raw[y][x] == "@" {
-				idx := offset + x
-				grid[idx] = 3 // Binary 11: Alive(1) | Queued(2)
-				q = append(q, idx)
-			}
-		}
+	for _, idx := range active {
+		y := idx / width
+		x := idx % width
+		pIdx := (y+1)*stride + (x + 1)
+		grid[pIdx] = cellAlive | cellQueued
+		queue = append(queue, pIdx)
 	}
 
-	offs := []int{-w - 1, -w, -w + 1, -1, 1, w - 1, w, w + 1}
+	return grid, stride, queue
+}
+
+func neighborOffsetsForStride(stride int) []int {
+	return []int{
+		-stride - 1, -stride, -stride + 1,
+		-1, 1,
+		stride - 1, stride, stride + 1,
+	}
+}
+
+func Part2() any {
+	raw := *util.GetGrid()
+	_, w, h, active := parseGrid(raw)
+
+	grid, stride, q := buildPaddedGrid(w, h, active)
+	offs := neighborOffsetsForStride(stride)
 
 	totalRemoved := 0
 	deaths := make([]int, 0, 64)
 
-	// simulation loops
 	for len(q) > 0 {
 		deaths = deaths[:0]
+
 		for _, idx := range q {
-			grid[idx] &= 1
+			grid[idx] &= cellAlive
+			if grid[idx]&cellAlive == 0 {
+				continue
+			}
+
 			n := 0
 			for _, d := range offs {
-				n += int(grid[idx+d] & 1)
+				if grid[idx+d]&cellAlive == cellAlive {
+					n++
+				}
 			}
 
 			if n < 4 {
@@ -116,14 +134,14 @@ func Part2() any {
 		q = q[:0]
 
 		for _, idx := range deaths {
-			if grid[idx]&1 == 1 {
-				grid[idx] = 0 // Kill cell
+			if grid[idx]&cellAlive == cellAlive {
+				grid[idx] = 0
 				totalRemoved++
 
 				for _, d := range offs {
 					nIdx := idx + d
-					if grid[nIdx] == 1 {
-						grid[nIdx] = 3
+					if grid[nIdx] == cellAlive {
+						grid[nIdx] = cellAlive | cellQueued
 						q = append(q, nIdx)
 					}
 				}
