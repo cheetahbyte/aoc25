@@ -1,13 +1,16 @@
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iostream>
+#include <print>
 #include <ranges>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include <cctype>
+#define schlong
 
 std::string trim(const std::string &s) {
   size_t start = 0, end = s.size();
@@ -19,11 +22,11 @@ std::string trim(const std::string &s) {
 }
 
 struct Range {
-  long long start, end;
+   schlong start, end;
 };
 
 struct ParseResult {
-  std::vector<long long> ingredients;
+  std::vector<schlong> ingredients;
   std::vector<Range> ranges;
 };
 
@@ -67,7 +70,6 @@ ParseResult parseFile() {
   // optimisitc reservation
   result.ranges.reserve(10 * 10);
   result.ingredients.reserve(10 * 10);
-  bool afterBlank = false;
 
   while (std::getline(infile, line)) {
     if (line == "") {
@@ -86,16 +88,16 @@ ParseResult parseFile() {
   return result;
 }
 
-long long part1(const ParseResult &input) {
+schlong part1(const ParseResult &input) {
   const auto &ranges = input.ranges;
   const auto &ingredients = input.ingredients;
 
-  long long sum = 0;
+  schlong sum = 0;
 
   for (auto val : ingredients) {
     auto it = std::upper_bound(
         ranges.begin(), ranges.end(), val,
-        [](long long value, const Range &r) { return value < r.start; });
+        [](schlong value, const Range &r) { return value < r.start; });
 
     if (it == ranges.begin()) {
       continue;
@@ -109,14 +111,14 @@ long long part1(const ParseResult &input) {
   return sum;
 }
 
-long long part1_two_pointer(const ParseResult &input) {
+inline schlong part1_two_pointer(const ParseResult &input) {
   const auto &ranges = input.ranges;
   const auto &ingredients = input.ingredients;
 
   std::size_t ri = 0;
-  long long sum = 0;
+  schlong sum = 0;
 
-  for (long long val : ingredients) {
+  for (schlong val : ingredients) {
     // advance range index while current range ends before value
     while (ri < ranges.size() && ranges[ri].end < val) {
       ++ri;
@@ -128,6 +130,18 @@ long long part1_two_pointer(const ParseResult &input) {
       ++sum;
     }
     // else val < ranges[ri].start => not in any range yet, continue
+  }
+
+  return sum;
+}
+
+inline schlong part2(const ParseResult &input) {
+  const auto &ranges = input.ranges;
+
+  schlong sum = 0;
+
+  for (const auto &range : ranges) {
+    sum += (range.end - range.start) + 1;
   }
 
   return sum;
@@ -145,10 +159,16 @@ int main() {
   auto pt1_po = part1_two_pointer(input);
   auto end1 = std::chrono::high_resolution_clock::now();
   auto duration1 =
-      std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-  std::cout << "Part 1: " << pt1 << " and took " << duration.count() << "µs"
-            << std::endl;
-  std::cout << "Part 1 (2 Pointer): " << pt1_po << " and took " << duration1.count() << "µs"
-            << std::endl;
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end1 - start1);
+
+  auto start2 = std::chrono::high_resolution_clock::now();
+  auto pt2 = part2(input);
+  auto end2 = std::chrono::high_resolution_clock::now();
+  auto duration2 =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end2 - start2);
+  std::println("Part 1: {} and took {} µs", pt1, duration.count());
+  std::println("Part 1(2 Pointer): {} and took {} ns", pt1_po,
+               duration1.count());
+  std::println("Part 2: {} and took {} ns", pt2, duration2.count());
   return 0;
 }

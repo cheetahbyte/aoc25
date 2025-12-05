@@ -68,7 +68,6 @@ func mergeIntervals(intervals []Interval) []Interval {
 
 	var result []Interval
 	current := intervals[0]
-
 	for i := 1; i < len(intervals); i++ {
 		next := intervals[i]
 		if current.End >= next.Start { // Overlap
