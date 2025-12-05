@@ -40,24 +40,22 @@ std::vector<std::string> split(std::string_view s) {
 }
 
 void preprocess(ParseResult &input) {
-  // sort
   auto &ranges = input.ranges;
+
   std::sort(ranges.begin(), ranges.end(),
             [](const Range &a, const Range &b) { return a.start < b.start; });
-  // merge overlaps
+
   std::vector<Range> merged;
   merged.reserve(ranges.size());
   for (const auto &r : ranges) {
     if (merged.empty() || r.start > merged.back().end + 1) {
       merged.push_back(r);
-    } else {
-      if (r.end > merged.back().end) {
-        merged.back().end = r.end;
-      }
+    } else if (r.end > merged.back().end) {
+      merged.back().end = r.end;
     }
   }
-
   ranges.swap(merged);
+  std::sort(input.ingredients.begin(), input.ingredients.end());
 }
 
 ParseResult parseFile() {
@@ -94,18 +92,42 @@ long long part1(const ParseResult &input) {
 
   long long sum = 0;
 
-  for (auto val: ingredients) {
-      auto it = std::upper_bound(ranges.begin(), ranges.end(), val, [](long long value, const Range& r) {
-          return value < r.start;
-      });
+  for (auto val : ingredients) {
+    auto it = std::upper_bound(
+        ranges.begin(), ranges.end(), val,
+        [](long long value, const Range &r) { return value < r.start; });
 
-      if (it == ranges.begin()) {
-          continue;
-      }
-      --it;
-      if (val >= it->start && val <= it->end) {
-          ++sum;
-      }
+    if (it == ranges.begin()) {
+      continue;
+    }
+    --it;
+    if (val >= it->start && val <= it->end) {
+      ++sum;
+    }
+  }
+
+  return sum;
+}
+
+long long part1_two_pointer(const ParseResult &input) {
+  const auto &ranges = input.ranges;
+  const auto &ingredients = input.ingredients;
+
+  std::size_t ri = 0;
+  long long sum = 0;
+
+  for (long long val : ingredients) {
+    // advance range index while current range ends before value
+    while (ri < ranges.size() && ranges[ri].end < val) {
+      ++ri;
+    }
+    if (ri == ranges.size()) {
+      break; // all remaining ingredients are beyond last range
+    }
+    if (val >= ranges[ri].start) {
+      ++sum;
+    }
+    // else val < ranges[ri].start => not in any range yet, continue
   }
 
   return sum;
@@ -113,12 +135,20 @@ long long part1(const ParseResult &input) {
 
 int main() {
   auto input = parseFile();
+  preprocess(input);
   auto start = std::chrono::high_resolution_clock::now();
   auto pt1 = part1(input);
   auto end = std::chrono::high_resolution_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  auto start1 = std::chrono::high_resolution_clock::now();
+  auto pt1_po = part1_two_pointer(input);
+  auto end1 = std::chrono::high_resolution_clock::now();
+  auto duration1 =
+      std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
   std::cout << "Part 1: " << pt1 << " and took " << duration.count() << "µs"
+            << std::endl;
+  std::cout << "Part 1 (2 Pointer): " << pt1_po << " and took " << duration1.count() << "µs"
             << std::endl;
   return 0;
 }
